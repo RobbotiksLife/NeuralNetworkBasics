@@ -117,11 +117,8 @@ def plot_decision_regions(X, y, predict_func, filename="plot_name"):
     plt.savefig(f"{filename}.png")
 
 def to_one_hot(y_pred):
-    # Convert the prediction array to 1D if necessary
     y_pred = np.squeeze(y_pred)
-    # Find the index of the maximum value
     max_index = np.argmax(y_pred)
-    # Create a one-hot encoded array
     one_hot = np.zeros_like(y_pred)
     one_hot[max_index] = 1
     return one_hot
@@ -159,26 +156,26 @@ if __name__ == '__main__':
         'Iris-virginica': [0, 0, 1]
     }).to_list(), (150, 3, 1))
 
-    neural_network = NeuralNetwork(
-        layers=[
-            Dense(2, 3),
-            SoftPlus(),
-            Dense(3, 6),
-            SoftPlus(),
-            Dense(6, 3),
-            Sigmoid()
-        ],
-        loss_function=MeanSquaredErrorLoss()
-    )
-
-    neural_network.train(
-        x_train=X,
-        y_train=y,
-        epochs=100000
-    )
-
-    neural_network.save("neural_network_iris_flower_dataset_v2")
-    neural_network = NeuralNetwork.load("neural_network_iris_flower_dataset_v2")
+    # neural_network = NeuralNetwork(
+    #     layers=[
+    #         Dense(2, 3),
+    #         SoftPlus(),
+    #         Dense(3, 6),
+    #         SoftPlus(),
+    #         Dense(6, 3),
+    #         Sigmoid()
+    #     ],
+    #     loss_function=MeanSquaredErrorLoss()
+    # )
+    #
+    # neural_network.train(
+    #     x_train=X,
+    #     y_train=y,
+    #     epochs=100000
+    # )
+    #
+    # neural_network.save("neural_network_iris_flower_dataset_v2")
+    neural_network = NeuralNetwork.load("neural_network_iris_flower_dataset_v1")
 
     print(np.round(neural_network.predict(X[0]), decimals=4))
     print(np.round(neural_network.predict(X[60]), decimals=4))
@@ -189,12 +186,82 @@ if __name__ == '__main__':
 
     y_pred = []
     for x in X:
-        y_pred.append(neural_network.predict(x))
+        y_pred.append(to_one_hot(neural_network.predict(x)))
 
-    y_pred = np.array(y_pred).round()
-    plot_decision_regions(
-        X=X,
-        y=y_pred,
-        predict_func=neural_network.predict,
-        filename="nn_prediction_results"
+    y_pred = y.reshape(150, 3, 1)
+    # plot_decision_regions(
+    #     X=X,
+    #     y=y_pred,
+    #     predict_func=neural_network.predict,
+    #     filename="nn_prediction_results_v2"
+    # )
+
+    # Plot the data using the plot_data function
+    plot_data(
+        iris_data,
+        'class',
+        'iris_plot_sepal_petal_width.png',
+        plot_columns=['sepal_width', 'petal_width']
     )
+
+    def calculate_metrics(y_true, y_pred):
+        """
+        Calculate accuracy, precision, recall, and F1 score.
+
+        Parameters:
+        y_true (numpy.ndarray): True labels in one-hot encoded format.
+        y_pred (numpy.ndarray): Predicted labels in one-hot encoded format.
+
+        Returns:
+        dict: A dictionary with accuracy, precision, recall, and F1 score.
+        """
+        # Convert one-hot encoded labels to class indices
+        y_true_cls = np.argmax(y_true, axis=1)
+        y_pred_cls = np.argmax(y_pred, axis=1)
+
+        # Number of classes
+        num_classes = y_true.shape[1]
+
+        # Initialize counts
+        true_positive = np.zeros(num_classes)
+        false_positive = np.zeros(num_classes)
+        false_negative = np.zeros(num_classes)
+
+        # Calculate true positives, false positives, and false negatives for each class
+        for i in range(len(y_true_cls)):
+            if y_true_cls[i] == y_pred_cls[i]:
+                true_positive[y_true_cls[i]] += 1
+            else:
+                false_positive[y_pred_cls[i]] += 1
+                false_negative[y_true_cls[i]] += 1
+
+        # Calculate accuracy
+        accuracy = np.sum(true_positive) / len(y_true_cls)
+
+        # Calculate precision, recall, and F1 score for each class
+        precision = np.zeros(num_classes)
+        recall = np.zeros(num_classes)
+        f1_score = np.zeros(num_classes)
+
+        for i in range(num_classes):
+            if true_positive[i] + false_positive[i] > 0:
+                precision[i] = true_positive[i] / (true_positive[i] + false_positive[i])
+            if true_positive[i] + false_negative[i] > 0:
+                recall[i] = true_positive[i] / (true_positive[i] + false_negative[i])
+            if precision[i] + recall[i] > 0:
+                f1_score[i] = 2 * (precision[i] * recall[i]) / (precision[i] + recall[i])
+
+        # Calculate macro-averaged precision, recall, and F1 score
+        precision_macro = np.mean(precision)
+        recall_macro = np.mean(recall)
+        f1_score_macro = np.mean(f1_score)
+
+        return {
+            'accuracy': accuracy,
+            'precision': precision_macro,
+            'recall': recall_macro,
+            'f1_score': f1_score_macro
+        }
+
+    print(calculate_metrics(y, y_pred))
+
