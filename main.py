@@ -86,6 +86,48 @@ def plot_data(dataset, class_column, filename, plot_columns):
     plt.savefig(filename)
 
 
+def plot_decision_regions(X, y, predict_func, filename="plot_name"):
+    # Define the color map
+    colors = ['red', 'green', 'blue']
+    class_labels = ['Iris-setosa', 'Iris-versicolor', 'Iris-virginica']
+
+    # Plot the data points
+    for idx, class_label in enumerate(class_labels):
+        plt.scatter(X[y[:, idx, 0] == 1, 0, 0], X[y[:, idx, 0] == 1, 1, 0], c=colors[idx], label=class_label)
+
+    # Create a mesh grid
+    x_min, x_max = X[:, 0, 0].min() - 1, X[:, 0, 0].max() + 1
+    y_min, y_max = X[:, 1, 0].min() - 1, X[:, 1, 0].max() + 1
+    xx, yy = np.meshgrid(np.arange(x_min, x_max, 0.01), np.arange(y_min, y_max, 0.01))
+    grid_points = np.c_[xx.ravel(), yy.ravel()]
+    grid_points_reshaped = grid_points.reshape(-1, 2, 1)
+
+    # Predict the class for each point in the mesh grid
+    Z = np.array([predict_func(point) for point in grid_points_reshaped])
+    Z = np.argmax(Z, axis=1)  # Get the index of the max class probability
+    Z = Z.reshape(xx.shape)
+
+    # Plot the decision boundary by assigning a color to each point in the mesh grid
+    plt.contourf(xx, yy, Z, alpha=0.3, cmap=plt.cm.RdYlBu)
+
+    # Add labels, legend, and show plot
+    plt.xlabel('Sepal Width')
+    plt.ylabel('Petal Width')
+    plt.legend()
+    plt.savefig(f"{filename}.png")
+
+def to_one_hot(y_pred):
+    # Convert the prediction array to 1D if necessary
+    y_pred = np.squeeze(y_pred)
+    # Find the index of the maximum value
+    max_index = np.argmax(y_pred)
+    # Create a one-hot encoded array
+    one_hot = np.zeros_like(y_pred)
+    one_hot[max_index] = 1
+    return one_hot
+
+
+
 import numpy as np
 from neural_networks.neural_network import NeuralNetwork
 from neural_networks.loss_functions.loss_functions import MeanSquaredErrorLoss
@@ -117,24 +159,26 @@ if __name__ == '__main__':
         'Iris-virginica': [0, 0, 1]
     }).to_list(), (150, 3, 1))
 
-    # neural_network = NeuralNetwork(
-    #     layers=[
-    #         Dense(2, 2),
-    #         SoftPlus(),
-    #         Dense(2, 3),
-    #         Sigmoid()
-    #     ],
-    #     loss_function=MeanSquaredErrorLoss()
-    # )
-    #
-    # neural_network.train(
-    #     x_train=X,
-    #     y_train=y,
-    #     epochs=100000
-    # )
-    #
-    # neural_network.save("neural_network_iris_flower_dataset")
-    neural_network = NeuralNetwork.load("neural_network_iris_flower_dataset")
+    neural_network = NeuralNetwork(
+        layers=[
+            Dense(2, 3),
+            SoftPlus(),
+            Dense(3, 6),
+            SoftPlus(),
+            Dense(6, 3),
+            Sigmoid()
+        ],
+        loss_function=MeanSquaredErrorLoss()
+    )
+
+    neural_network.train(
+        x_train=X,
+        y_train=y,
+        epochs=100000
+    )
+
+    neural_network.save("neural_network_iris_flower_dataset_v2")
+    neural_network = NeuralNetwork.load("neural_network_iris_flower_dataset_v2")
 
     print(np.round(neural_network.predict(X[0]), decimals=4))
     print(np.round(neural_network.predict(X[60]), decimals=4))
@@ -143,15 +187,14 @@ if __name__ == '__main__':
     print(X.shape)
     print(y.shape)
 
-    # # Generate random data for demonstration
-    # data = np.random.rand(150, 2, 1)
+    y_pred = []
+    for x in X:
+        y_pred.append(neural_network.predict(x))
 
-    # Flatten the array for plotting
-    flattened_data = X.reshape(-1, 2)
-
-    # Plotting
-    plt.scatter(flattened_data[:, 0], flattened_data[:, 1])
-    plt.title('Scatter Plot')
-    plt.xlabel('X')
-    plt.ylabel('Y')
-    plt.show()
+    y_pred = np.array(y_pred).round()
+    plot_decision_regions(
+        X=X,
+        y=y_pred,
+        predict_func=neural_network.predict,
+        filename="nn_prediction_results"
+    )
