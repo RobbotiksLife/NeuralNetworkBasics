@@ -51,6 +51,8 @@
 import pandas as pd
 import matplotlib.pyplot as plt
 
+import utils
+
 
 def plot_data(dataset, class_column, filename, plot_columns):
     """
@@ -85,7 +87,7 @@ def plot_data(dataset, class_column, filename, plot_columns):
     plt.grid(True)
     plt.savefig(filename)
 
-
+from utils import float_range
 def plot_decision_regions(X, y, predict_func, filename="plot_name"):
     # Define the color map
     colors = ['red', 'green', 'blue']
@@ -109,6 +111,10 @@ def plot_decision_regions(X, y, predict_func, filename="plot_name"):
 
     # Plot the decision boundary by assigning a color to each point in the mesh grid
     plt.contourf(xx, yy, Z, alpha=0.3, cmap=plt.cm.RdYlBu)
+    # plt.scatter(xx, yy, Z, alpha=0.05, cmap=plt.cm.RdYlBu)
+    # for x in float_range(x_min, x_max, 0.1):
+    #     for y in float_range(y_min, y_max, 0.1):
+    #         plt.scatter(x, y, alpha=0.05, c=predict_func(np.array([[x], [y]])))
 
     # Add labels, legend, and show plot
     plt.xlabel('Sepal Width')
@@ -129,7 +135,7 @@ import numpy as np
 from neural_networks.neural_network import NeuralNetwork
 from neural_networks.loss_functions.loss_functions import MeanSquaredErrorLoss
 from neural_networks.layers.dense import Dense
-from neural_networks.layers.activations import SoftPlus, Sigmoid
+from neural_networks.layers.activations import SoftPlus, Sigmoid, ReLU
 
 
 if __name__ == '__main__':
@@ -158,11 +164,9 @@ if __name__ == '__main__':
 
     # neural_network = NeuralNetwork(
     #     layers=[
+    #         Dense(2, 2),
+    #         ReLU(),
     #         Dense(2, 3),
-    #         SoftPlus(),
-    #         Dense(3, 6),
-    #         SoftPlus(),
-    #         Dense(6, 3),
     #         Sigmoid()
     #     ],
     #     loss_function=MeanSquaredErrorLoss()
@@ -174,94 +178,35 @@ if __name__ == '__main__':
     #     epochs=100000
     # )
     #
-    # neural_network.save("neural_network_iris_flower_dataset_v2")
-    neural_network = NeuralNetwork.load("neural_network_iris_flower_dataset_v1")
+    # neural_network.save("neural_network_iris_flower_dataset_v6")
+    neural_network = NeuralNetwork.load("neural_network_iris_flower_dataset_v6")
 
-    print(np.round(neural_network.predict(X[0]), decimals=4))
-    print(np.round(neural_network.predict(X[60]), decimals=4))
-    print(np.round(neural_network.predict(X[140]), decimals=4))
+    print(to_one_hot(neural_network.predict(X[0])))
+    print(to_one_hot(neural_network.predict(X[60])))
+    print(to_one_hot(neural_network.predict(X[140])))
 
     print(X.shape)
     print(y.shape)
 
-    y_pred = []
-    for x in X:
-        y_pred.append(to_one_hot(neural_network.predict(x)))
+    # Define Accuracy
+    y_pred_list = []
+    correct_values_num = 0
+    for x, y_true in zip(X, y):
+        y_pred = to_one_hot(neural_network.predict(x))
+        y_pred_list.append(y_pred)
+        if np.array_equal(y_true.reshape(3), y_pred):
+            correct_values_num += 1
+        # else:
+        #     print(x)
+    print(f"Accuracy: {correct_values_num/len(y)}")
 
-    y_pred = y.reshape(150, 3, 1)
-    # plot_decision_regions(
-    #     X=X,
-    #     y=y_pred,
-    #     predict_func=neural_network.predict,
-    #     filename="nn_prediction_results_v2"
-    # )
 
-    # Plot the data using the plot_data function
-    plot_data(
-        iris_data,
-        'class',
-        'iris_plot_sepal_petal_width.png',
-        plot_columns=['sepal_width', 'petal_width']
+    y_pred_np_array = np.array(y_pred_list).reshape(150, 3, 1)
+    plot_decision_regions(
+        X=X,
+        y=y_pred_np_array,
+        predict_func=lambda x: to_one_hot(neural_network.predict(x)),
+        filename="nn_prediction_results_v6"
     )
 
-    def calculate_metrics(y_true, y_pred):
-        """
-        Calculate accuracy, precision, recall, and F1 score.
-
-        Parameters:
-        y_true (numpy.ndarray): True labels in one-hot encoded format.
-        y_pred (numpy.ndarray): Predicted labels in one-hot encoded format.
-
-        Returns:
-        dict: A dictionary with accuracy, precision, recall, and F1 score.
-        """
-        # Convert one-hot encoded labels to class indices
-        y_true_cls = np.argmax(y_true, axis=1)
-        y_pred_cls = np.argmax(y_pred, axis=1)
-
-        # Number of classes
-        num_classes = y_true.shape[1]
-
-        # Initialize counts
-        true_positive = np.zeros(num_classes)
-        false_positive = np.zeros(num_classes)
-        false_negative = np.zeros(num_classes)
-
-        # Calculate true positives, false positives, and false negatives for each class
-        for i in range(len(y_true_cls)):
-            if y_true_cls[i] == y_pred_cls[i]:
-                true_positive[y_true_cls[i]] += 1
-            else:
-                false_positive[y_pred_cls[i]] += 1
-                false_negative[y_true_cls[i]] += 1
-
-        # Calculate accuracy
-        accuracy = np.sum(true_positive) / len(y_true_cls)
-
-        # Calculate precision, recall, and F1 score for each class
-        precision = np.zeros(num_classes)
-        recall = np.zeros(num_classes)
-        f1_score = np.zeros(num_classes)
-
-        for i in range(num_classes):
-            if true_positive[i] + false_positive[i] > 0:
-                precision[i] = true_positive[i] / (true_positive[i] + false_positive[i])
-            if true_positive[i] + false_negative[i] > 0:
-                recall[i] = true_positive[i] / (true_positive[i] + false_negative[i])
-            if precision[i] + recall[i] > 0:
-                f1_score[i] = 2 * (precision[i] * recall[i]) / (precision[i] + recall[i])
-
-        # Calculate macro-averaged precision, recall, and F1 score
-        precision_macro = np.mean(precision)
-        recall_macro = np.mean(recall)
-        f1_score_macro = np.mean(f1_score)
-
-        return {
-            'accuracy': accuracy,
-            'precision': precision_macro,
-            'recall': recall_macro,
-            'f1_score': f1_score_macro
-        }
-
-    print(calculate_metrics(y, y_pred))
 

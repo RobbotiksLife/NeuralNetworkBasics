@@ -25,11 +25,10 @@ class SoftPlus(Activation):
 class Sigmoid(Activation):
     def __init__(self):
         """
-        Initialize the SoftPlus activation layer.
+        Initialize the Sigmoid activation layer.
 
-        The SoftPlus function is defined as log(1 + exp(x)).
-        The derivative (gradient) of the SoftPlus function is exp(x) / (1 + exp(x)).
-        The second derivative of the SoftPlus function is exp(x) / (1 + exp(x))^2.
+        The Sigmoid function is defined as 1 / (1 + np.exp(-x)).
+        The derivative (gradient) of the SoftPlus function is self.sigmoid(x) * (1 - self.sigmoid(x)).
         """
         super().__init__(self.sigmoid, self.sigmoid_prime)
 
@@ -39,3 +38,21 @@ class Sigmoid(Activation):
     def sigmoid_prime(self, x):
         s = self.sigmoid(x)
         return s * (1 - s)
+
+
+class ReLU(Activation):
+    def __init__(self):
+        """
+        Initialize the ReLU activation layer.
+
+        The ReLU function is defined as max(0, x).
+        The derivative (gradient) of the ReLU function is 1 if x > 0, otherwise 0.
+        The second derivative of the ReLU function is 0 for all x.
+        """
+        super().__init__(self.relu, self.relu_prime)
+
+    def relu(self, x):
+        return np.maximum(0, x)
+
+    def relu_prime(self, x):
+        return np.where(x > 0, 1, 0)

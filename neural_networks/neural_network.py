@@ -29,9 +29,9 @@ class NeuralNetwork:
             error = 0
             for x, y in zip(x_train, y_train):
                 y_pred = self.predict(x)
-
+                # Calculate Error
                 error += self.loss_function.count(y_true=y, y_pred=y_pred)
-
+                # Update Params
                 self.update_params_with_backpropagation(y_true=y, y_pred=y_pred)
             error /= len(x_train)
             loading_bar.update(e, f"Epoch {e}/{epochs}, error={error:.4f}")
